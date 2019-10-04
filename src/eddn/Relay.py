@@ -68,6 +68,7 @@ class Relay(Thread):
         """
         Fires up the relay process.
         """
+        print('Relay.run()')
         # These form the connection to the Gateway daemon(s) upstream.
         context = zmq.Context()
 
@@ -75,15 +76,18 @@ class Relay(Thread):
 
         # Filters on topics or not...
         if Settings.RELAY_RECEIVE_ONLY_GATEWAY_EXTRA_JSON is True:
+            print('Relay.run(): RELAY_RECEIVE_ONLY_GATEWAY_EXTRA_JSON is set')
             for schemaRef, schemaFile in Settings.GATEWAY_JSON_SCHEMAS.iteritems():
                 receiver.setsockopt(zmq.SUBSCRIBE, schemaRef)
             for schemaRef, schemaFile in Settings.RELAY_EXTRA_JSON_SCHEMAS.iteritems():
                 receiver.setsockopt(zmq.SUBSCRIBE, schemaRef)
         else:
+            print('Relay.run(): RELAY_RECEIVE_ONLY_GATEWAY_EXTRA_JSON is NOT set')
             receiver.setsockopt(zmq.SUBSCRIBE, '')
 
         for binding in Settings.RELAY_RECEIVER_BINDINGS:
             # Relays bind upstream to an Announcer, or another Relay.
+            print('Relay.run(): receiver.connect()')
             receiver.connect(binding)
 
         sender = context.socket(zmq.PUB)
@@ -91,6 +95,7 @@ class Relay(Thread):
 
         for binding in Settings.RELAY_SENDER_BINDINGS:
             # End users, or other relays, may attach here.
+            print('Relay.run(): sender.connect()')
             sender.bind(binding)
 
         def relay_worker(message):
@@ -99,6 +104,7 @@ class Relay(Thread):
                 to any subscribers.
                 :param str message: A JSON string to re-broadcast.
             """
+            print('Relay.run.relay_worker()')
             # Separate topic from message
             message = message.split(' |-| ')
 
@@ -140,15 +146,22 @@ class Relay(Thread):
         while True:
             # For each incoming message, spawn a greenlet using the relay_worker
             # function.
+            print('Relay.run(): Waiting for message')
             inboundMessage = receiver.recv()
+            print('Relay.run(): Got a message')
+            logger.info('Got a message')
             statsCollector.tally("inbound")
             gevent.spawn(relay_worker, inboundMessage)
 
 
 def main():
+    print('main: loadConfig')
     loadConfig()
+    print('main: Relay()')
     r = Relay()
+    print('main: r.start()')
     r.start()
+    print('main: bottle_run')
     bottle_run(
         host=Settings.RELAY_HTTP_BIND_ADDRESS,
         port=Settings.RELAY_HTTP_PORT,
@@ -159,4 +172,5 @@ def main():
 
 
 if __name__ == '__main__':
+    print('calling main')
     main()

@@ -4,6 +4,8 @@
 Contains the necessary ZeroMQ socket and a helper function to publish
 market data to the Announcer daemons.
 """
+from gevent import monkey
+monkey.patch_all()
 import gevent
 import hashlib
 import logging
@@ -19,15 +21,22 @@ from pkg_resources import resource_string
 from eddn.conf.Settings import Settings, loadConfig
 from eddn.core.Validator import Validator, ValidationSeverity
 
-from gevent import monkey
-monkey.patch_all()
 from bottle import run, request, response, get, post
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger_ch = logging.StreamHandler()
+logger_ch.setLevel(logging.INFO)
+logger_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s.%(funcName)s: %(message)s')
+logger_formatter.default_time_format = '%Y-%m-%d %H:%M:%S';
+logger_formatter.default_msec_format = '%s.%03d'
+logger_ch.setFormatter(logger_formatter)
+logger.addHandler(logger_ch)
 
 # This socket is used to push market data out to the Announcers over ZeroMQ.
 context = zmq.Context()
 sender = context.socket(zmq.PUB)
+zmq_monitor = sender.get_monitor_socket()
 
 validator = Validator()
 
@@ -41,10 +50,13 @@ def configure():
     # Get the list of transports to bind from settings. This allows us to PUB
     # messages to multiple announcers over a variety of socket types
     # (UNIX sockets and/or TCP sockets).
+    print('configure()')
     for binding in Settings.GATEWAY_SENDER_BINDINGS:
+        print('configure(): sender.bind(%s)' % (binding))
         sender.bind(binding)
 
     for schemaRef, schemaFile in Settings.GATEWAY_JSON_SCHEMAS.iteritems():
+        print('configure(): validator.addSchemaResource(%s)' % (schemaRef))
         validator.addSchemaResource(schemaRef, resource_string('eddn.Gateway', schemaFile))
 
 
@@ -54,6 +66,7 @@ def push_message(parsed_message, topic):
     This is a dumb method that just pushes strings; it assumes you've already validated
     and serialised as you want to.
     """
+    #print('push_message(%s, %s)' %(parsed_message, topic))
     string_message = simplejson.dumps(parsed_message, ensure_ascii=False).encode('utf-8')
 
     # Push a zlib compressed JSON representation of the message to
@@ -61,9 +74,23 @@ def push_message(parsed_message, topic):
     compressed_msg = zlib.compress(string_message)
     
     send_message = "%s |-| %s" % (str(topic), compressed_msg)
+    send_message = "%s |-| %s" % (str(topic), string_message)
     
-    sender.send(send_message)
+    #print('Sending message:\n%s' % (string_message))
+    tracker = sender.send(send_message, flags=zmq.NOBLOCK, copy=False, track=True)
+    if not tracker:
+      raise AssertionError('No tracker from send()')
+    #sender.send_string("%s |-| %s" % (str(topic), 'This is a test message'))
+    logger.info('sent message')
     statsCollector.tally("outbound")
+
+    notdone = tracker.wait(1)
+    if not notdone:
+      print('Tracker claims message completed')
+    else:
+      print('Tracker timed out')
+
+    print('push_message() DONE')
 
 
 def get_remote_address():
@@ -131,6 +158,7 @@ def parse_and_error_handle(data):
         # Something bad happened. We know this will return at least a
         # semi-useful error message, so do so.
         response.status = 400
+        print('Gateway logging 400 error')
         logger.error("Error to %s: %s" % (get_remote_address(), exc.message))
         return str(exc)
 
@@ -208,9 +236,33 @@ class MalformedUploadError(Exception):
     pass
 
 
+EVENT_MAP = {}
+print("Event names:")
+for name in dir(zmq):
+    if name.startswith('EVENT_'):
+        value = getattr(zmq, name)
+        print("%21s : %4i" % (name, value))
+        EVENT_MAP[value] = name
+
+def event_monitor(monitor):
+    while monitor.poll():
+        evt = zmq.utils.monitor.recv_monitor_message(monitor)
+        if evt['event'] in EVENT_MAP:
+            evt.update({'description': EVENT_MAP[evt['event']]})
+        print("Event: {}".format(evt))
+        if evt['event'] == zmq.EVENT_MONITOR_STOPPED:
+            break
+    monitor.close()
+    print()
+    print("event monitor thread done!")
+
 def main():
+    print('main(): loadConfig()')
     loadConfig()
+    print('main(): configure()')
     configure()
+    print('main(): run()')
+    gevent.spawn(event_monitor, zmq_monitor)
     run(
         host=Settings.GATEWAY_HTTP_BIND_ADDRESS, 
         port=Settings.GATEWAY_HTTP_PORT, 
@@ -220,4 +272,5 @@ def main():
     )
 
 if __name__ == '__main__':
+    print('calling main()')
     main()
