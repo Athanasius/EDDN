@@ -6,6 +6,7 @@ market data to the Announcer daemons.
 """
 from gevent import monkey
 monkey.patch_all()
+import pdb
 import gevent
 import hashlib
 import logging
@@ -21,7 +22,8 @@ from pkg_resources import resource_string
 from eddn.conf.Settings import Settings, loadConfig
 from eddn.core.Validator import Validator, ValidationSeverity
 
-from bottle import run, request, response, get, post
+from bottle import run, request, response, get, post, Bottle
+app = Bottle()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -36,7 +38,7 @@ logger.addHandler(logger_ch)
 # This socket is used to push market data out to the Announcers over ZeroMQ.
 context = zmq.Context()
 sender = context.socket(zmq.PUB)
-zmq_monitor = sender.get_monitor_socket()
+#zmq_monitor = sender.get_monitor_socket()
 
 validator = Validator()
 
@@ -66,17 +68,19 @@ def push_message(parsed_message, topic):
     This is a dumb method that just pushes strings; it assumes you've already validated
     and serialised as you want to.
     """
-    #print('push_message(%s, %s)' %(parsed_message, topic))
+    print('push_message(msg, %s)' %(topic))
     string_message = simplejson.dumps(parsed_message, ensure_ascii=False).encode('utf-8')
 
     # Push a zlib compressed JSON representation of the message to
     # announcers with schema as topic
     compressed_msg = zlib.compress(string_message)
     
+    print('sender: {!r}'.format(sender))
     send_message = "%s |-| %s" % (str(topic), compressed_msg)
-    send_message = "%s |-| %s" % (str(topic), string_message)
+    #send_message = "%s |-| %s" % (str(topic), string_message)
     
     #print('Sending message:\n%s' % (string_message))
+    #pdb.set_trace()
     tracker = sender.send(send_message, flags=zmq.NOBLOCK, copy=False, track=True)
     if not tracker:
       raise AssertionError('No tracker from send()')
@@ -186,8 +190,9 @@ def parse_and_error_handle(data):
         return "FAIL: " + str(validationResults.messages)
 
 
-@post('/upload/')
+@app.post('/upload/')
 def upload():
+    sender.send(str('https://eddn.edcd.io/schemas/journal/1 |-| Gateway.upload(): Test message'))
     response.set_header("Access-Control-Allow-Origin", "*")
     try:
         # Body may or may not be compressed.
@@ -209,7 +214,7 @@ def upload():
     return parse_and_error_handle(message_body)
 
 
-@get('/health_check/')
+@app.get('/health_check/')
 def health_check():
     """
     This should only be used by the gateway monitoring script. It is used
@@ -219,7 +224,7 @@ def health_check():
     return Settings.EDDN_VERSION
 
 
-@get('/stats/')
+@app.get('/stats/')
 def stats():
     response.set_header("Access-Control-Allow-Origin", "*")
     stats = statsCollector.getSummary()
@@ -261,9 +266,14 @@ def main():
     loadConfig()
     print('main(): configure()')
     configure()
+    from time import sleep
+    print('sender: {!r}'.format(sender))
+    sleep(5)
+    sender.send(str('https://eddn.edcd.io/schemas/journal/1 |-| Test message'))
+    print('sender: {!r}'.format(sender))
     print('main(): run()')
-    gevent.spawn(event_monitor, zmq_monitor)
-    run(
+    #gevent.spawn(event_monitor, zmq_monitor)
+    app.run(
         host=Settings.GATEWAY_HTTP_BIND_ADDRESS, 
         port=Settings.GATEWAY_HTTP_PORT, 
         server='gevent', 
