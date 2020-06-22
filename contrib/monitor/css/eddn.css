@@ -25,3 +25,8 @@ footer .navbar-default {
 }
     
 .highcharts-container{width:100% !important; height:100% !important;}
+
+.jsgrid-grid-header,
+.jsgrid-grid-body{
+	  overflow: auto;
+}
