@@ -189,7 +189,7 @@ var doUpdateSoftwares = function()
                                 title: "",
                                 width: "30px",
                                 name: "name",
-                                type: "chartslug",
+                                // rowClick: <something to display the 'drilldown' for this software>,
                                 sorting: false,
                                 readOnly: true,
                             },
