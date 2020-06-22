@@ -180,6 +180,7 @@ var doUpdateSoftwares = function()
                         width: "100%",
 
                         sorting: true,
+                        paging: false,
 
                         data: jsGridSoftwareByName,
 
@@ -187,8 +188,8 @@ var doUpdateSoftwares = function()
                             {
                                 title: "",
                                 width: "30px",
-                                name: "chart",
-                                type: "grid-field",
+                                name: "name",
+                                type: "chartslug",
                                 sorting: false,
                                 readOnly: true,
                             },
@@ -208,6 +209,7 @@ var doUpdateSoftwares = function()
                                 readOnly: true,
                                 css: "stat today",
                                 itemTemplate: formatNumberJsGrid,
+                                sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
                             },
                             {
                                 title: "Yesterday hits",
@@ -217,6 +219,7 @@ var doUpdateSoftwares = function()
                                 readOnly: true,
                                 css: "stat yesterday",
                                 itemTemplate: formatNumberJsGrid,
+                                sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
                             },
                             {
                                 title: "Total hits",
@@ -226,6 +229,7 @@ var doUpdateSoftwares = function()
                                 readOnly: true,
                                 css: "stat total",
                                 itemTemplate: formatNumberJsGrid,
+                                sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
                             },
                         ],
                     });
@@ -823,17 +827,58 @@ formatNumberJsGrid = function(value, item) {
  * Custom jsGrid field for highchart
  */
 var EDDNjsGridChartSlug = function(config) {
-    jsGrid.field.call(this, config);
+    jsGrid.Field.call(this, config);
 };
 
 EDDNjsGridChartSlug.prototype = new jsGrid.Field({
     sorting: false,
 
     itemTemplate: function(value) {
+        if (false) {
+        $.each(softwaresTotalData, function(software, hits){
+            softwareSplit = software.split(' | ');
 
-        return "Drilldown";
+            $('#software .table tbody').append(
+                newTr = $('<tr>').attr('data-type', 'drilldown').attr('data-parent', softwareSplit[0]).attr('data-name', software).on('mouseover', function(){
+                    chart.get('software-' + makeSlug(software)).setState('hover');
+                    chart.tooltip.refresh(chart.get('software-' + makeSlug(software)));
+                }).on('mouseout', function(){
+                    chart.get('software-' + makeSlug(software)).setState('');
+                    chart.tooltip.hide();
+                }).append(
+                    $('<td>').addClass('square')
+                ).append(
+                    $('<td>').html('<strong>' + softwareSplit[1] + '</strong>')
+                )
+                .append(
+                    $('<td>').addClass('stat today').html(formatNumber(softwares[today][software] || 0))
+                )
+                .append(
+                    $('<td>').addClass('stat yesterday').html(formatNumber(softwares[yesterday][software] || 0))
+                )
+                .append(
+                    $('<td>').addClass('stat total').html('<strong>' + formatNumber(hits) + '</strong>')
+                )
+            );
+
+            if(!drillDownSoftware)
+                newTr.hide();
+            else
+                if(softwareSplit[0] != currentDrillDown)
+                    newTr.hide();
+
+            if(!softwaresVersion[softwareSplit[0]])
+                softwaresVersion[softwareSplit[0]] = {};
+            if(!softwaresVersion[softwareSplit[0]][software])
+                softwaresVersion[softwareSplit[0]][software] = {
+                    today: (softwares[today][software] || 0), yesterday: (softwares[yesterday][software] || 0), total: hits
+                };
+        });
+        }
+        return "D";
     },
 });
+jsGrid.fields.chartslug = EDDNjsGridChartSlug;
 
 $(document).ready(function(){
     start();
