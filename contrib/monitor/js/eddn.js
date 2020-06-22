@@ -175,7 +175,7 @@ var doUpdateSoftwares = function()
                     });
                     */
 
-                    $('#software .table').jsGrid({
+                    $('#software .table-responsive').jsGrid({
                         width: "100%",
 
                         filtering: false,
@@ -185,6 +185,82 @@ var doUpdateSoftwares = function()
                         visible: true, // Toggle to hide, duh
 
                         data: jsGridSoftwareByName,
+
+                        rowRenderer: function(item) {
+                            return $('<tr>').attr('data-type', 'parent').attr('data-name', item.name).on('click', function(event){
+                                event.stopImmediatePropagation();
+                                currentSoftware = $(this).attr('data-name');
+
+                                if(!drillDownSoftware)
+                                {
+                                    currentDrillDown = currentSoftware;
+
+                                    $('#software .table thead th:eq(0)').html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span>')
+                                                                         .css('cursor','pointer')
+                                                                         .on('click', function(){
+                                                                             currentDrillDown = false;
+                                                                             chart.showDrillUpButton();
+                                                                             $('#software .table thead th:eq(0)').html('');
+                                                                             $('#software .table thead th:eq(1)').html('');
+                                                                             $('#software .table tbody tr[data-type=parent]').show();
+                                                                             $('#software .table tbody tr[data-type=drilldown]').hide();
+                                                                             drillDownSoftware = !drillDownSoftware;
+                                                                             doUpdateSoftwares();
+                                                                             chart.drillUp();
+                                                                         });
+                                    $('#software .table thead th:eq(1)').html(currentSoftware);
+                                    $('#software .table tbody tr[data-type=parent]').hide();
+                                    $('#software .table tbody tr[data-type=drilldown][data-parent="' + currentSoftware + '"]').show();
+
+                                    var currentData = [];
+
+                                    $.each(softwaresVersion[currentSoftware], function(key, value){
+                                        currentData.push({
+                                            id: 'software-' + makeSlug(key),
+                                            name: key,
+                                            y: parseInt(value.total)
+                                        });
+                                    });
+
+                                    chart.addSeriesAsDrilldown(chart.get('software-' + makeSlug(currentSoftware)), {
+                                        id: 'softwareDrilldown-' + makeSlug(currentSoftware),
+                                        type: 'pie',
+                                        name: currentSoftware,
+                                        data: currentData
+                                    });
+                                    chart.redraw();
+
+                                    if(chart.drillUpButton)
+                                        chart.drillUpButton = chart.drillUpButton.destroy();
+
+                                    $('#software .table tbody tr[data-type=drilldown][data-parent="' + currentSoftware + '"]').each(function(){
+                                        $(this).find('.square').css('background', chart.get('software-' + makeSlug($(this).attr('data-name'))).color);
+                                    });
+                                }
+
+                                drillDownSoftware = !drillDownSoftware;
+                            }).on('mouseover', function(){
+                                chart.get('software-' + makeSlug(item.name)).setState('hover');
+                                chart.tooltip.refresh(chart.get('software-' + makeSlug(item.name)));
+                            }).on('mouseout', function(){
+                                if(chart.get('software-' + makeSlug(item.name)))
+                                    chart.get('software-' + makeSlug(item.name)).setState('');
+                                chart.tooltip.hide();
+                            }).append(
+                                $('<td>').addClass('square').css('width', '30px')
+                            ).append(
+                                $('<td>').html('<strong>' + item.name + '</strong>').css('cursor','pointer').css('width', '50%')
+                            )
+                            .append(
+                                $('<td>').addClass('stat today').html(formatNumber(item.today || 0))
+                            )
+                            .append(
+                                $('<td>').addClass('stat yesterday').html(formatNumber(item.yesterday || 0))
+                            )
+                            .append(
+                                $('<td>').addClass('stat total').html('<strong>' + formatNumber(item.total) + '</strong>')
+                            );
+                        },
 
                         fields: [
                             {
