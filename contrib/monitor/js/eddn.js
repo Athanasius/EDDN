@@ -114,16 +114,26 @@ var doUpdateSoftwares = function()
                         softwareName[softwareSplit[0]][1] += parseInt(softwares[yesterday][software] || 0);
 
                     });
+					var jsGridSoftwareByName = []
+					$.each(softwareName, function(software, hits) {
+						jsGridSoftwareByName.push({
+							'name': software,
+							'today': softwareName[software][0],
+							'yesterday': softwareName[software][1],
+							'total': softwareName[software][2],
+						});
+					});
 
                     // Sort by total DESC
                     var tmp = new Array();
-                    $.each(softwareName, function(software, hits){ tmp.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]}); });
-                    tmp.sort(function(a,b) { return b.total - a.total; });
-                    softwaresTotal = tmp;
+                    //$.each(softwareName, function(software, hits){ tmp.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]}); });
+                    //tmp.sort(function(a,b) { return b.total - a.total; });
+                    //softwaresTotal = tmp;
 
                     $('#software .table tbody').empty();
 
                     // Prepare drilldowns
+					if (false) {
                     $.each(softwaresTotalData, function(software, hits){
                         softwareSplit = software.split(' | ');
 
@@ -163,7 +173,24 @@ var doUpdateSoftwares = function()
                                 today: (softwares[today][software] || 0), yesterday: (softwares[yesterday][software] || 0), total: hits
                             };
                     });
+					}
 
+					$('#software .table').jsGrid({
+						height: "100%",
+						width: "100%",
+
+						sorting: true,
+
+						data: jsGridSoftwareByName,
+
+						fields: [
+							{ name: "name", type: "text", readOnly: true },
+							{ name: "today", type: "number", readOnly: true },
+							{ name: "yesterday", type: "number", readOnly: true },
+							{ name: "total", type: "number", readOnly: true },
+						]
+					});
+					if (false) {
                     // Add main softwares
                     $.each(softwaresTotal, function(key, values){
                         $('#software .table tbody').append(
@@ -262,6 +289,7 @@ var doUpdateSoftwares = function()
                         $('#software .table tbody tr[data-type=drilldown][data-parent="' + currentDrillDown + '"]').each(function(){
                             $(this).find('.square').css('background', chart.get('software-' + makeSlug($(this).attr('data-name'))).color);
                         });
+					} // if (false) for old code
 
                     chart.redraw();
 
