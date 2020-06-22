@@ -83,6 +83,23 @@ var doUpdateSoftwares = function()
         yesterday   = dYesterday.getUTCFullYear() + '-' + ("0" + (dYesterday.getUTCMonth() +　1)).slice(-2) + '-' + ("0" + (dYesterday.getUTCDate())).slice(-2),
         today       = dToday.getUTCFullYear() + '-' + ("0" + (dToday.getUTCMonth() +　1)).slice(-2) + '-' + ("0" + (dToday.getUTCDate())).slice(-2);
 
+    /*
+     * Gathering the data per a "<softwareName> | <softwareVersion>" tuple takes two calls.
+     *
+     *  1) First a /getSoftwares/?dateStart=<yesterday>&dateEnd=<today>
+     *
+     *      This returns an object with two top level keys, one for each date.  The value
+     *      for each is another object with "<softwareName> | <softwareVersion>" as each key,
+     *      and the value as the count for that tuple.
+     *
+     *  2) Then the lifetime totals for each "<softwareName> | <softwareVersion>" tuple, from
+     *     /getTotalSoftwares/
+     *
+     *      This returns an object with "<softwareName> | <softwareVersion>" tuples as keys,
+     *      the values being the lifetime totals for each tuple.
+     *
+     *  The calls are nested here, so only the inner .ajax() has access to the totality of data.
+     */
     $.ajax({
         dataType: "json",
         url: monitorEndPoint + 'getSoftwares/?dateStart=' + yesterday + '&dateEnd = ' + today,
@@ -94,6 +111,15 @@ var doUpdateSoftwares = function()
                     var chart   = $('#software .chart').highcharts(),
                         series  = chart.get('softwares');
 
+                    /*
+                     * Prepare 'softwareName' dictionary with the values being an array each:
+                     *
+                     *  0 - today count
+                     *  1 - yesterday count
+                     *  2 - total count
+                     *
+                     * XXX: This is the necessary format for the highcharts?
+                     */
                     // Count total by software, all versions included
                     var softwareName = {};
                     $.each(softwaresTotalData, function(software, hits){
@@ -114,6 +140,24 @@ var doUpdateSoftwares = function()
                         softwareName[softwareSplit[0]][1] += parseInt(softwares[yesterday][software] || 0);
 
                     });
+
+                    // Sort by total DESC
+                    // Necessary for the HighChart Pie chart
+                    var tmp = new Array();
+                    $.each(softwareName, function(software, hits){ tmp.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]}); });
+                    tmp.sort(function(a,b) { return b.total - a.total; });
+                    softwaresTotal = tmp;
+
+                    $('#software .table tbody').empty();
+
+                    /*
+                     * jsGrid needs an array of objects, with each having key:values for
+                     *
+                     *  name
+                     *  today
+                     *  yesterday
+                     *  total
+                     */
 					var jsGridSoftwareByName = []
 					$.each(softwareName, function(software, hits) {
 						jsGridSoftwareByName.push({
@@ -123,14 +167,6 @@ var doUpdateSoftwares = function()
 							'total': softwareName[software][2],
 						});
 					});
-
-                    // Sort by total DESC
-                    var tmp = new Array();
-                    $.each(softwareName, function(software, hits){ tmp.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]}); });
-                    tmp.sort(function(a,b) { return b.total - a.total; });
-                    softwaresTotal = tmp;
-
-                    $('#software .table tbody').empty();
 
                     // Prepare drilldowns
                     $.each(softwaresTotalData, function(software, hits){
