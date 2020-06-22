@@ -175,21 +175,60 @@ var doUpdateSoftwares = function()
                     });
 					}
 
-					$('#software .table').jsGrid({
-						height: "100%",
-						width: "100%",
+                    $('#software .table').jsGrid({
+                        height: "100%",
+                        width: "100%",
 
-						sorting: true,
+                        sorting: true,
 
-						data: jsGridSoftwareByName,
+                        data: jsGridSoftwareByName,
 
-						fields: [
-							{ name: "name", type: "text", readOnly: true },
-							{ name: "today", type: "number", readOnly: true },
-							{ name: "yesterday", type: "number", readOnly: true },
-							{ name: "total", type: "number", readOnly: true },
-						]
-					});
+                        fields: [
+                            {
+                                title: "",
+                                width: "30px",
+                                name: "chart",
+                                type: "grid-field",
+                                sorting: false,
+                                readOnly: true,
+                            },
+                            {
+                                title: "Software name",
+                                width: "50%",
+                                name: "name",
+                                type: "text",
+                                align: "left",
+                                readOnly: true,
+                            },
+                            {
+                                title: "Today hits",
+                                name: "today",
+                                type: "number",
+                                align: "right",
+                                readOnly: true,
+                                css: "stat today",
+                                itemTemplate: formatNumberJsGrid,
+                            },
+                            {
+                                title: "Yesterday hits",
+                                name: "yesterday",
+                                type: "number",
+                                align: "right",
+                                readOnly: true,
+                                css: "stat yesterday",
+                                itemTemplate: formatNumberJsGrid,
+                            },
+                            {
+                                title: "Total hits",
+                                name: "total",
+                                type: "number",
+                                align: "right",
+                                readOnly: true,
+                                css: "stat total",
+                                itemTemplate: formatNumberJsGrid,
+                            },
+                        ],
+                    });
 					if (false) {
                     // Add main softwares
                     $.each(softwaresTotal, function(key, values){
@@ -768,6 +807,33 @@ var start       = function(){
         showStats('relays', $(this).find('option:selected').html());
     });
 }
+
+/*
+ * JS Grid related functions
+ */
+
+/*
+ * Nicely format a number for jsGrid
+ */
+formatNumberJsGrid = function(value, item) {
+    return value.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
+}
+
+/*
+ * Custom jsGrid field for highchart
+ */
+var EDDNjsGridChartSlug = function(config) {
+    jsGrid.field.call(this, config);
+};
+
+EDDNjsGridChartSlug.prototype = new jsGrid.Field({
+    sorting: false,
+
+    itemTemplate: function(value) {
+
+        return "Drilldown";
+    },
+});
 
 $(document).ready(function(){
     start();
