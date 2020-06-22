@@ -30,3 +30,7 @@ footer .navbar-default {
 .jsgrid-grid-body{
 	  overflow: auto;
 }
+
+.jsgrid-row {
+	line-height: 37px;
+}
