@@ -133,38 +133,84 @@ var doUpdateSoftwares = function()
                     $('#software .table tbody').empty();
 
                     // Prepare drilldowns
-                    /*
                     $.each(softwaresTotalData, function(software, hits){
                         softwareSplit = software.split(' | ');
 
-                        $('#software .table tbody').append(
-                            newTr = $('<tr>').attr('data-type', 'drilldown').attr('data-parent', softwareSplit[0]).attr('data-name', software).on('mouseover', function(){
-                                chart.get('software-' + makeSlug(software)).setState('hover');
-                                chart.tooltip.refresh(chart.get('software-' + makeSlug(software)));
-                            }).on('mouseout', function(){
-                                chart.get('software-' + makeSlug(software)).setState('');
-                                chart.tooltip.hide();
-                            }).append(
-                                $('<td>').addClass('square')
-                            ).append(
-                                $('<td>').html('<strong>' + softwareSplit[1] + '</strong>')
-                            )
-                            .append(
-                                $('<td>').addClass('stat today').html(formatNumber(softwares[today][software] || 0))
-                            )
-                            .append(
-                                $('<td>').addClass('stat yesterday').html(formatNumber(softwares[yesterday][software] || 0))
-                            )
-                            .append(
-                                $('<td>').addClass('stat total').html('<strong>' + formatNumber(hits) + '</strong>')
-                            )
+                        // Append a new DIV for this jsGrid to the "#software #tables" div
+                        $('#software #tables').append(
+                            $('<div/>').addClass('table-softwares').attr('id', 'table-softwares-' + makeSlug(softwareSplit[0]))
                         );
+                        newJsGrid = $("#table-softwares-" + makeSlug(softwareSplit[0])).jsGrid({
+                            width: "100%",
+
+                            filtering: false,
+                            inserting: false,
+                            editing: false,
+                            sorting: true,
+                            visible: true, // Toggle to hide, duh
+
+                            data: hits,
+
+                            fields: [
+                                {
+                                    title: "",
+                                    width: "30px",
+                                    sorting: false,
+                                    readOnly: true,
+                                },
+                                {
+                                    title: softwareSplit[0],
+                                    width: "50%",
+                                    name: softwareSplit[1],
+                                    type: "text",
+                                    align: "left",
+                                    readOnly: true,
+                                },
+                                {
+                                    title: "Today hits",
+                                    name: "today",
+                                    type: "number",
+                                    align: "right",
+                                    readOnly: true,
+                                    css: "stat today",
+                                    itemTemplate: formatNumberJsGrid(softwares[today][software] || 0),
+                                    sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
+                                },
+                                {
+                                    title: "Yesterday hits",
+                                    name: "yesterday",
+                                    type: "number",
+                                    align: "right",
+                                    readOnly: true,
+                                    css: "stat yesterday",
+                                    itemTemplate: formatNumberJsGrid(softwares[yesterday][software] || 0),
+                                    sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
+                                },
+                                {
+                                    title: "Total hits",
+                                    name: "total",
+                                    type: "number",
+                                    align: "right",
+                                    readOnly: true,
+                                    css: "stat total",
+                                    itemTemplate: formatNumberJsGrid(hits),
+                                    sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
+                                },
+                            ],
+                        }).attr('data-type', 'drilldown').attr('data-name', softwareSplit[0]).on('mouseover', function(){
+                            chart.get('software-' + makeSlug(software)).setState('hover');
+                            chart.tooltip.refresh(chart.get('software-' + makeSlug(software)));
+                        }).on('mouseout', function(){
+                            chart.get('software-' + makeSlug(software)).setState('');
+                            chart.tooltip.hide();
+                        });
+
 
                         if(!drillDownSoftware)
-                            newTr.hide();
+                            newJsGrid.hide();
                         else
                             if(softwareSplit[0] != currentDrillDown)
-                                newTr.hide();
+                                newJsGrid.hide();
 
                         if(!softwaresVersion[softwareSplit[0]])
                             softwaresVersion[softwareSplit[0]] = {};
@@ -173,9 +219,12 @@ var doUpdateSoftwares = function()
                                 today: (softwares[today][software] || 0), yesterday: (softwares[yesterday][software] || 0), total: hits
                             };
                     });
-                    */
 
-                    $('#software .table-responsive').jsGrid({
+                    // Append a new DIV for this jsGrid to the "#software #tables" div
+                    $('#software #tables').append(
+                        $('<div/>').addClass('jsGridTable').attr('id', 'table-softwares')
+                    );
+                    newJsGrid = $("#table-softwares").jsGrid({
                         width: "100%",
 
                         filtering: false,
