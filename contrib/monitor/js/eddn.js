@@ -279,12 +279,13 @@ var doUpdateSoftwares = function()
                                         {
                                             //console.log('Adding data point sort is: %o', softwaresSort.field);
                                             // Populates the data into the overall Software pie chart as per current sort column
-                                            console.log('drilldown onRefreshed: Adding %o = %o', key, values);
+                                            //console.log('drilldown onRefreshed: Adding %o = %o', key, values);
                                             series.addPoint({id: 'software-' + makeSlug(values.name), name: values.name, y: parseInt(values[grid.grid._sortField.name]), drilldown: true}, false);
                                         } else {
                                             // Populates the data into the overall Software pie chart as per current sort column
                                             chart.get('software-' + makeSlug(values.name)).update(parseInt(values[grid.grid._sortField.name]), false);
                                         }
+                                        $(".square[data-name='" + this.name + "']").css('background', chart.get('software-' + makeSlug(values.name)).color);
                                     });
                                 }
                                 chart.redraw();
@@ -414,6 +415,7 @@ var doUpdateSoftwares = function()
                                             // Populates the data into the overall Software pie chart as per current sort column
                                             chart.get('software-' + makeSlug(values.name)).update(parseInt(values[grid.grid._sortField.name]), false);
                                         }
+                                        $(".square[data-name='" + this.name + "']").css('background', chart.get('software-' + makeSlug(values.name)).color);
                                     });
                                 }
                                 chart.redraw();
@@ -424,12 +426,11 @@ var doUpdateSoftwares = function()
                     // Re-apply the last stored sort
                     $("#table-softwares").jsGrid("sort", softwaresSort);
 
-
                     // Colourise the first column per pie chart colours
                     $.each(softwaresTotal, function(key, values){
-                        if (!currentDrillDown || currentDrillDown == this.name) {
+                        //if (!currentDrillDown || currentDrillDown == this.name) {
                             $(".square[data-name='" + this.name + "']").css('background', chart.get('software-' + makeSlug(values.name)).color);
-                        }
+                        //}
                     });
 
                     chart.redraw();
