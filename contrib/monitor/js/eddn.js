@@ -337,13 +337,21 @@ var doUpdateSoftwares = function()
                         },
                         onRefreshed: function(grid) {
                             // Gets fired when sort is changed
-                            console.log('softwares.onRefreshed(): %o', grid);
+                            //console.log('softwares.onRefreshed(): %o', grid);
                             if (grid && grid.grid && grid.grid._sortField) {
-                                console.log(' sort is: %o', grid.grid._sortField.name);
+                                //console.log(' grid sort is: %o, %o', grid.grid._sortField.name, grid.grid._sortOrder);
+                                //console.log(' saved sort is: %o', softwaresSort);
+                                if (softwaresSort.field != grid.grid._sortField.name) {
+                                    softwaresSort.field = grid.grid._sortField.name;
+                                    $("#table-softwares").jsGrid("sort", softwaresSort);
+                                    return;
+                                } else {
+                                    softwaresSort.order = grid.grid._sortOrder;
+                                }
                                 $.each(softwaresTotal, function(key, values) {
                                     if(!chart.get('software-' + makeSlug(values.name)))
                                     {
-                                        console.log('Adding data point sort is: %o', softwaresSort.field);
+                                        //console.log('Adding data point sort is: %o', softwaresSort.field);
                                         // Populates the data into the overall Software pie chart as per current sort column
                                         series.addPoint({id: 'software-' + makeSlug(values.name), name: values.name, y: parseInt(values[grid.grid._sortField.name]), drilldown: true}, false);
                                     } else {
