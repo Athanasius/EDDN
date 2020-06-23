@@ -72,6 +72,7 @@ secondsToDurationString = function(seconds) {
 var drillDownSoftware = false;
 var currentDrillDown  = false;
 
+var softwaresSort = { field: 'today', order: 'desc' }; // Very first load sort order
 var softwaresTotal    = new Array();
 var softwaresVersion  = {};
 
@@ -142,6 +143,7 @@ var doUpdateSoftwares = function()
                     });
 
                     // Populate array with dictionaries per software
+                    softwaresTotal = new Array();
                     $.each(softwareName, function(software, hits){ softwaresTotal.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]}); });
 
                     $('#software .table tbody').empty();
@@ -218,7 +220,7 @@ var doUpdateSoftwares = function()
                             chart.get('software-' + makeSlug(software)).setState('');
                             chart.tooltip.hide();
                         });
-
+                        //$("#table-softwares-" + makeSlug(softwareSplit[0])).jsGrid("sort", softwaresSort);
 
                         if(!drillDownSoftware)
                             newJsGrid.hide();
@@ -234,10 +236,15 @@ var doUpdateSoftwares = function()
                             };
                     });
 
-                    // Append a new DIV for this jsGrid to the "#software #tables" div
-                    $('#software #tables').append(
-                        $('<div/>').addClass('jsGridTable').attr('id', 'table-softwares')
-                    );
+                    if (! $("#table-softwares").length ) {
+                        // Append a new DIV for this jsGrid to the "#software #tables" div
+                        $('#software #tables').append(
+                            $('<div/>').addClass('jsGridTable').attr('id', 'table-softwares')
+                        );
+                    } else {
+                        // Store the last selected sort so we can apply it to the new version
+                        softwaresSort = $("#table-softwares").jsGrid("getSorting");
+                    }
                     newJsGrid = $("#table-softwares").jsGrid({
                         width: "100%",
 
@@ -376,7 +383,9 @@ var doUpdateSoftwares = function()
                             },
                         ],
                     });
-                    $("#table-softwares").jsGrid("sort", { field: 'today', order: 'desc' });
+                    // Re-apply the last stored sort
+                    $("#table-softwares").jsGrid("sort", softwaresSort);
+
                     // Add main softwares
                     $.each(softwaresTotal, function(key, values){
                         if(!drillDownSoftware)
