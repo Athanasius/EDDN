@@ -176,7 +176,7 @@ var doUpdateSoftwares = function()
                         softwaresSort = $("#table-softwares").jsGrid("getSorting");
                     }
 
-                    console.log('getTotalSoftwares.success(): currentDrillDown = %o', currentDrillDown);
+                    //console.log('getTotalSoftwares.success(): currentDrillDown = %o', currentDrillDown);
                     //$('#software .table tbody').empty();
 
                     // Prepare drilldowns
@@ -291,6 +291,22 @@ var doUpdateSoftwares = function()
                                 chart.redraw();
                             },
                         });
+                        $("#table-softwares table .jsgrid-header-row th:eq(0)").html('<span class="glyphicon glyphicon-remove"></span>')
+                        .css('cursor','pointer')
+                        .on('click', function(event) {
+                            // Drilldown?
+                            //console.log('softwares: click! %o', event);
+                            currentDrillDown = false;
+                            // Clear series
+                            series.remove(false);
+                            chart.addSeries({
+                                id: 'softwares',
+                                name: 'Softwares',
+                                type: 'pie',
+                                data: []
+                            });
+                            doUpdateSoftwares();
+                        });
 
                     } else { // Not drilling down
 
@@ -355,7 +371,7 @@ var doUpdateSoftwares = function()
                             rowRenderer: function(item) {
                                 return $('<tr>').attr('data-type', 'parent').attr('data-name', item.name).on('click', function(event){
                                     // Drilldown?
-                                    console.log('softwares: click! %o', event);
+                                    //console.log('softwares: click! %o', event);
                                     currentDrillDown = item.name;
                                     // Clear series
                                     series.remove(false);
@@ -389,9 +405,6 @@ var doUpdateSoftwares = function()
                                 );
                             },
     
-                            onOptionChanged: function(grid, option, value) {
-                                console.log('softwares.onOptionChanged(): %o, %o, %o', grid, option, value);
-                            },
                             onRefreshed: function(grid) {
                                 // Gets fired when sort is changed
                                 //console.log('softwares.onRefreshed(): %o', grid);

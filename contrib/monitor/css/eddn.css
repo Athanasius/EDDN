@@ -26,11 +26,16 @@ footer .navbar-default {
     
 .highcharts-container{width:100% !important; height:100% !important;}
 
+.jsgrid {
+	/* Same as bootstrap CSS sets on body */
+	font-size: 14px; 
+}
+
 .jsgrid-grid-header,
 .jsgrid-grid-body{
 	  overflow: auto;
 }
 
-.jsgrid-row {
+.jsgrid-row, .jsgrid-alt-row {
 	line-height: 37px;
 }
