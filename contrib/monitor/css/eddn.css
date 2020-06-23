@@ -36,6 +36,6 @@ footer .navbar-default {
 	  overflow: auto;
 }
 
-.jsgrid-row, .jsgrid-alt-row {
-	line-height: 37px;
+tr.jsgrid-row > td, tr.jsgrid-alt-row > td {
+	padding: 8px;
 }
