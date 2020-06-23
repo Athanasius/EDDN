@@ -72,7 +72,7 @@ secondsToDurationString = function(seconds) {
 var drillDownSoftware = false;
 var currentDrillDown  = false;
 
-var softwaresTotal    = {};
+var softwaresTotal    = new Array();
 var softwaresVersion  = {};
 
 var doUpdateSoftwares = function()
@@ -141,32 +141,10 @@ var doUpdateSoftwares = function()
 
                     });
 
-                    // Sort by total DESC
-                    // Necessary for the HighChart Pie chart
-                    var tmp = new Array();
-                    $.each(softwareName, function(software, hits){ tmp.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]}); });
-                    tmp.sort(function(a,b) { return b.total - a.total; });
-                    softwaresTotal = tmp;
+                    // Populate array with dictionaries per software
+                    $.each(softwareName, function(software, hits){ softwaresTotal.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]}); });
 
                     $('#software .table tbody').empty();
-
-                    /*
-                     * jsGrid needs an array of objects, with each having key:values for
-                     *
-                     *  name
-                     *  today
-                     *  yesterday
-                     *  total
-                     */
-					var jsGridSoftwareByName = []
-					$.each(softwareName, function(software, hits) {
-						jsGridSoftwareByName.push({
-							'name': software,
-							'today': softwareName[software][0],
-							'yesterday': softwareName[software][1],
-							'total': softwareName[software][2],
-						});
-					});
 
                     // Prepare drilldowns
                     $.each(softwaresTotalData, function(software, hits){
@@ -267,9 +245,11 @@ var doUpdateSoftwares = function()
                         inserting: false,
                         editing: false,
                         sorting: true,
+                        autoload: false,
+
                         visible: true, // Toggle to hide, duh
 
-                        data: jsGridSoftwareByName,
+                        data: softwaresTotal,
 
                         rowRenderer: function(item) {
                             return $('<tr>').attr('data-type', 'parent').attr('data-name', item.name).on('click', function(event){
@@ -372,7 +352,7 @@ var doUpdateSoftwares = function()
                                 readOnly: true,
                                 css: "stat today",
                                 itemTemplate: formatNumberJsGrid,
-                                sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
+                                //sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
                             },
                             {
                                 title: "Yesterday hits",
@@ -382,7 +362,7 @@ var doUpdateSoftwares = function()
                                 readOnly: true,
                                 css: "stat yesterday",
                                 itemTemplate: formatNumberJsGrid,
-                                sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
+                                //sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
                             },
                             {
                                 title: "Total hits",
@@ -392,10 +372,11 @@ var doUpdateSoftwares = function()
                                 readOnly: true,
                                 css: "stat total",
                                 itemTemplate: formatNumberJsGrid,
-                                sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
+                                //sorter: function(i1, i2) { return jsGrid.sortStrategies.number(i2, i1); }, // Reverse the sorting, so DESC is first click
                             },
                         ],
                     });
+                    $("#table-softwares").jsGrid("sort", { field: 'today', order: 'desc' });
                     // Add main softwares
                     $.each(softwaresTotal, function(key, values){
                         if(!drillDownSoftware)
