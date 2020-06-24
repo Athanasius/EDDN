@@ -1,3 +1,5 @@
+/* vim: wrapmargin=0 textwidth=0 tabstop=4 softtabstop=4 expandtab shiftwidth=4
+ */
 var updateInterval      = 60000,
 
     monitorEndPoint     = 'https://eddn.edcd.io:9091/',
@@ -73,7 +75,7 @@ var drillDownSoftware = false;
 var currentDrillDown  = false;
 
 var softwaresSort = { field: 'today', order: 'desc' }; // Very first load sort order
-var softwaresTotal    = new Array();
+var softwaresData    = new Array();
 var softwaresVersion  = {};
 
 var doUpdateSoftwares = function()
@@ -104,66 +106,52 @@ var doUpdateSoftwares = function()
     $.ajax({
         dataType: "json",
         url: monitorEndPoint + 'getSoftwares/?dateStart=' + yesterday + '&dateEnd = ' + today,
-        success: function(softwares){
+        success: function(softwaresTodayYesterday){
             $.ajax({
                 dataType: "json",
                 url: monitorEndPoint + 'getTotalSoftwares/',
-                success: function(softwaresTotalData){
+                success: function(softwaresTotals){
                     var chart   = $('#software .chart').highcharts(),
                         series  = chart.get('softwares');
 
                     /*
-                     * Prepare 'softwareName' dictionary with the values being an array each:
+                     * Prepare 'softwaresData' dictionary:
                      *
-                     *  0 - today count
-                     *  1 - yesterday count
-                     *  2 - total count
-                     *
-                     * XXX: This is the necessary format for the highcharts?
+                     * 	key: software name (including the version if drilled down)
+                     * 	value: dictionary with counts for: today, yesterday, total (all time)
                      */
-                    // Count total by software, all versions included
-                    var softwareName = {};
-                    $.each(softwaresTotalData, function(software, hits){
-                        softwareSplit = software.split(' | ');
+                    softwaresData = new Array();
+                    $.each(softwaresTotals, function(softwareName, total){
+                        softwareSplit = softwareName.split(' | ');
 
                         // If we're drilled down filter to only lines for that softwarename
-                        if (currentDrillDown && currentDrillDown == softwareSplit[0]) {
-                            name = software;
+                        if (currentDrillDown) {
+                            if (currentDrillDown == softwareSplit[0]) {
+                                name = softwareName;
+                            } else {
+                                return true; // next/continue
+                            }
                         } else {
                             name = softwareSplit[0];
                         }
-                        if(!softwareName[name])
-                            softwareName[name] = [0,0, parseInt(hits)];
-                        else
-                            softwareName[name][2] += parseInt(hits);
+                        var sw = softwaresData.find(o => o.name === name);
+                        if(!sw) {
+                            softwaresData.push({ 'name': name, 'today': 0, 'yesterday': 0, 'total': parseInt(total)});
+                            sw = softwaresData.find(o => o.name === name);
+                        } else {
+                            sw['total'] += parseInt(total);
+                        }
 
                         // Might happen when nothing is received...
-                        if(softwares[yesterday] == undefined)
-                            softwares[yesterday] = [];
-                        if(softwares[today] == undefined)
-                            softwares[today] = [];
+                        if(softwaresTodayYesterday[yesterday] == undefined)
+                            softwaresTodayYesterday[yesterday] = [];
+                        if(softwaresTodayYesterday[today] == undefined)
+                            softwaresTodayYesterday[today] = [];
 
-                        softwareName[name][0] += parseInt(softwares[today][software] || 0);
-                        softwareName[name][1] += parseInt(softwares[yesterday][software] || 0);
+                        sw['today'] += parseInt(softwaresTodayYesterday[today][softwareName] || 0);
+                        sw['yesterday'] += parseInt(softwaresTodayYesterday[yesterday][softwareName] || 0);
 
                     });
-
-                    // Populate array with dictionaries per software
-                    softwaresTotal = new Array();
-                    // If we're drilled down filter to only lines for that softwarename
-                    if (currentDrillDown) {
-                        $.each(softwareName, function(software, hits) {
-                            softwareSplit = software.split(' | ');
-                            if (softwareSplit[0] == currentDrillDown) {
-                                softwaresTotal.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]});
-                            }
-                        });
-                    } else {
-                        $.each(softwareName, function(software, hits) {
-                            softwareSplit = software.split(' | ');
-                            softwaresTotal.push({name: software, today: hits[0], yesterday: hits[1], total: hits[2]});
-                        });
-                    }
 
                     // Ensure we have the jsGrid added
                     if (! $("#table-softwares").length ) {
@@ -179,7 +167,6 @@ var doUpdateSoftwares = function()
                     //console.log('getTotalSoftwares.success(): currentDrillDown = %o', currentDrillDown);
                     //$('#software .table tbody').empty();
 
-                    // Prepare drilldowns
                     if (currentDrillDown) {
 
                         newJsGrid = $("#table-softwares").jsGrid({
@@ -190,7 +177,7 @@ var doUpdateSoftwares = function()
                             editing: false,
                             sorting: true,
 
-                            data: softwaresTotal,
+                            data: softwaresData,
 
                             fields: [
                                 {
@@ -274,7 +261,7 @@ var doUpdateSoftwares = function()
                                     } else {
                                         softwaresSort.order = grid.grid._sortOrder;
                                     }
-                                    $.each(softwaresTotal, function(key, values) {
+                                    $.each(softwaresData, function(key, values) {
                                         if(!chart.get('software-' + makeSlug(values.name)))
                                         {
                                             //console.log('Adding data point sort is: %o', softwaresSort.field);
@@ -319,7 +306,7 @@ var doUpdateSoftwares = function()
                             sorting: true,
                             autoload: false,
     
-                            data: softwaresTotal,
+                            data: softwaresData,
     
                             fields: [
                                 {
@@ -418,7 +405,7 @@ var doUpdateSoftwares = function()
                                     } else {
                                         softwaresSort.order = grid.grid._sortOrder;
                                     }
-                                    $.each(softwaresTotal, function(key, values) {
+                                    $.each(softwaresData, function(key, values) {
                                         if(!chart.get('software-' + makeSlug(values.name)))
                                         {
                                             //console.log('Adding data point sort is: %o', softwaresSort.field);
@@ -440,7 +427,7 @@ var doUpdateSoftwares = function()
                     $("#table-softwares").jsGrid("sort", softwaresSort);
 
                     // Colourise the first column per pie chart colours
-                    $.each(softwaresTotal, function(key, values){
+                    $.each(softwaresData, function(key, values){
                         //if (!currentDrillDown || currentDrillDown == this.name) {
                             $(".square[data-name='" + this.name + "']").css('background', chart.get('software-' + makeSlug(values.name)).color);
                         //}
@@ -461,6 +448,7 @@ var doUpdateSoftwares = function()
 }
 
 
+/* XXX: Update this to also use jsGrid */
 var doUpdateSchemas = function()
 {
     var dToday      = new Date(),
