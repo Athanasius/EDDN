@@ -449,6 +449,9 @@ var doUpdateSoftwares = function()
 
 
 /* XXX: Update this to also use jsGrid */
+var schemasSort = { field: 'today', order: 'desc' }; // Very first load sort order
+var schemasData    = new Array();
+
 var doUpdateSchemas = function()
 {
     var dToday      = new Date(),
@@ -460,87 +463,173 @@ var doUpdateSchemas = function()
     $.ajax({
         dataType: "json",
         url: monitorEndPoint + 'getSchemas/?dateStart=' + yesterday + '&dateEnd = ' + today,
-        success: function(schemas){
+        success: function(schemasTodayYesterday){
+            // Might happen when nothing is received...
+            if(schemasTodayYesterday[yesterday] == undefined)
+                schemaTodayYesterday[yesterday] = [];
+            if(schemasTodayYesterday[today] == undefined)
+                schemasTodayYesterday[today] = [];
+
             $.ajax({
                 dataType: "json",
                 url: monitorEndPoint + 'getTotalSchemas/',
-                success: function(schemasTotalTmp){
-					// Convert old schemas and sum them to new schemas
-                    schemasTotal = {};
-                    $.each(schemasTotalTmp, function(schema, hits){
-                        schema = schema.replace('http://schemas.elite-markets.net/eddn/', 'https://eddn.edcd.io/schemas/');
-                        hits   = parseInt(hits);
-
-                        if(schemasTotal[schema]){ schemasTotal[schema] += hits; }
-                        else{ schemasTotal[schema] = hits; }
-                    });
-
+                success: function(schemasTotals){
                     var chart   = $('#schemas .chart').highcharts(),
                         series  = chart.get('schemas');
 
-                    $('#schemas .table tbody').empty();
+                    /*
+                     * Prepare 'schemasData' dictionary
+                     */
+                    schemasData = new Array();
+                    $.each(schemasTotals, function(schema, total) {
+                        schemaName = schema.replace('http://schemas.elite-markets.net/eddn/', 'https://eddn.edcd.io/schemas/');
+                        // Due to the schema renames and us merging them there could be more than one
+                        // row of data input per schema
+                        var sch = schemasData.find(o => o.name === schemaName);
+                        if (!sch) {
+                            schemasData.push({ 'name': schemaName, 'today': 0, 'yesterday': 0, 'total': parseInt(total)});
+                            sch = schemasData.find(o => o.name === schemaName);
+                        } else {
+                            sch['total'] += parseInt(total);
+                        }
+                    });
 
-                    $.each(schemasTotal, function(schema, hits){
-                        // Might happen when nothing is received...
-                        if(schemas[yesterday] == undefined)
-                            schemas[yesterday] = [];
-                        if(schemas[today] == undefined)
-                            schemas[today] = [];
+                    // Today
+                    $.each(schemasTodayYesterday[today], function(schema, hits) {
+                        schemaName = schema.replace('http://schemas.elite-markets.net/eddn/', 'https://eddn.edcd.io/schemas/');
+                        var sch = schemasData.find(o => o.name === schemaName);
+                        sch['today'] += parseInt(hits);
+                    });
+                    // Yesterday
+                    $.each(schemasTodayYesterday[yesterday], function(schema, hits) {
+                        schemaName = schema.replace('http://schemas.elite-markets.net/eddn/', 'https://eddn.edcd.io/schemas/');
+                        var sch = schemasData.find(o => o.name === schemaName);
+                        sch['yesterday'] += parseInt(hits);
+                    });
 
-						// Convert old schemas and sum them to new schemas
-						schemasYesterdayTmp = {};
-						$.each(schemas[yesterday], function(schema, hits){
-							schema = schema.replace('http://schemas.elite-markets.net/eddn/', 'https://eddn.edcd.io/schemas/');
-							hits   = parseInt(hits);
+                    // Ensure we have the jsGrid added
+                    if (! $("#table-schemas").length ) {
+                        // Append a new DIV for this jsGrid to the "#schemas #tables" div
+                        $('#schemas #tables').append(
+                            $('<div/>').addClass('jsGridTable').attr('id', 'table-schemas')
+                        );
+                    } else {
+                        // Store the last selected sort so we can apply it to the new version
+                        schemasSort = $("#table-schemas").jsGrid("getSorting");
+                    }
 
-							if(schemasYesterdayTmp[schema]){ schemasYesterdayTmp[schema] += hits; }
-							else{ schemasYesterdayTmp[schema] = hits; }
-						});
-						schemas[yesterday] = schemasYesterdayTmp;
+                    newJsGrid = $("#table-schemas").jsGrid({
+                        width: "100%",
 
-						schemasTodayTmp = {};
-						$.each(schemas[today], function(schema, hits){
-							schema = schema.replace('http://schemas.elite-markets.net/eddn/', 'https://eddn.edcd.io/schemas/');
-							hits   = parseInt(hits);
+                        filtering: false,
+                        inserting: false,
+                        editing: false,
+                        sorting: true,
+                        autoload: false,
 
-							if(schemasTodayTmp[schema]){ schemasYesterdayTmp[schema] += hits; }
-							else{ schemasTodayTmp[schema] = hits; }
-						});
-						schemas[today] = schemasTodayTmp;
+                        data: schemasData,
 
-                        var slug = makeSlug(schema);
-                        var name = makeName(schema);
+                        fields: [
+                            {
+                                title: "",
+                                width: "30px",
+                                name: "chartslug",
+                                sorting: false,
+                                readOnly: true,
+                            },
+                            {
+                                title: "Schema",
+                                width: "50%",
+                                name: "name",
+                                type: "text",
+                                align: "left",
+                                readOnly: true,
+                            },
+                            {
+                                title: "Today hits",
+                                name: "today",
+                                type: "number",
+                                align: "right",
+                                readOnly: true,
+                                css: "stat today",
+                                itemTemplate: formatNumberJsGrid,
+                            },
+                            {
+                                title: "Yesterday hits",
+                                name: "yesterday",
+                                type: "number",
+                                align: "right",
+                                readOnly: true,
+                                css: "stat yesterday",
+                                itemTemplate: formatNumberJsGrid,
+                            },
+                            {
+                                title: "Total hits",
+                                name: "total",
+                                type: "number",
+                                align: "right",
+                                readOnly: true,
+                                css: "stat total",
+                                itemTemplate: formatNumberJsGrid,
+                            },
+                        ],
 
-                        $('#schemas .table tbody').append(
-                            newTr = $('<tr>').attr('data-name', schema).on('mouseover', function(){
-                                chart.get('schema-' + slug).setState('hover');
-                                chart.tooltip.refresh(chart.get('schema-' +slug));
+                        rowRenderer: function(item) {
+                            return $('<tr>').attr('data-type', 'parent').attr('data-name', item.name).on('mouseover', function(){
+                                chart.get('schema-' + makeSlug(item.name)).setState('hover');
+                                chart.tooltip.refresh(chart.get('schema-' + makeSlug(item.name)));
                             }).on('mouseout', function(){
-                                chart.get('schema-' + slug).setState('');
+                                if(chart.get('schema-' + makeSlug(item.name)))
+                                    chart.get('schema-' + makeSlug(item.name)).setState('');
                                 chart.tooltip.hide();
                             }).append(
-                                $('<td>').addClass('square')
+                                $('<td>').addClass('square').attr('data-name', item.name).css('width', '30px').css('padding', '8px')
                             ).append(
-                                $('<td>').html('<strong>' + name + '</strong>')
+                                $('<td>').html('<strong>' + makeName(item.name) + '</strong>').css('cursor','pointer').css('width', '50%')
                             )
                             .append(
-                                $('<td>').addClass('stat today').html(formatNumber(schemas[today][schema] || 0))
+                                $('<td>').addClass(item.today ? 'stat today' : 'warning').html(formatNumber(item.today || 0))
                             )
                             .append(
-                                $('<td>').addClass('stat yesterday').html(formatNumber(schemas[yesterday][schema] || 0))
+                                $('<td>').addClass(item.yesterday ? 'stat yesterday' : 'warning').html(formatNumber(item.yesterday || 0))
                             )
                             .append(
-                                $('<td>').addClass('stat total').html('<strong>' + formatNumber(hits) + '</strong>')
-                            )
-                        );
+                                $('<td>').addClass('stat total').html('<strong>' + formatNumber(item.total) + '</strong>')
+                            );
+                        },
 
-                        if(!chart.get('schema-' + slug))
-                            series.addPoint({id: 'schema-' + slug, name: name, y: parseInt(hits)}, false);
-                        else
-                            chart.get('schema-' + slug).update(parseInt(hits), false);
-
-                        newTr.find('.square').css('background', chart.get('schema-' + slug).color);
+                        onRefreshed: function(grid) {
+                            // Gets fired when sort is changed
+                            //console.log('softwares.onRefreshed(): %o', grid);
+                            if (grid && grid.grid && grid.grid._sortField) {
+                                //console.log(' grid sort is: %o, %o', grid.grid._sortField.name, grid.grid._sortOrder);
+                                //console.log(' saved sort is: %o', schemasSort);
+                                if (schemasSort.field != grid.grid._sortField.name) {
+                                    schemasSort.field = grid.grid._sortField.name;
+                                    $("#table-schemas").jsGrid("sort", schemasSort);
+                                    return;
+                                } else {
+                                    schemasSort.order = grid.grid._sortOrder;
+                                }
+                                $.each(schemasData, function(key, values) {
+                                    if(!chart.get('schema-' + makeSlug(values.name)))
+                                    {
+                                        //console.log('Adding data point sort is: %o', schemasSort.field);
+                                        // Populates the data into the overall Software pie chart as per current sort column
+                                        series.addPoint({id: 'schema-' + makeSlug(values.name), name: values.name, y: parseInt(values[grid.grid._sortField.name]), drilldown: true}, false);
+                                    } else {
+                                        // Populates the data into the overall Software pie chart as per current sort column
+                                        chart.get('schema-' + makeSlug(values.name)).update(parseInt(values[grid.grid._sortField.name]), false);
+                                    }
+                                    $(".square[data-name='" + this.name + "']").css('background', chart.get('schema-' + makeSlug(values.name)).color);
+                                });
+                            }
+                            chart.redraw();
+                        },
                     });
+
+                    // Re-apply the last stored sort
+                    $("#table-schemas").jsGrid("sort", schemasSort);
 
                     chart.redraw();
 
