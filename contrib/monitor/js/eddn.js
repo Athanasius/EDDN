@@ -382,10 +382,10 @@ var doUpdateSoftwares = function()
                                     $('<td>').html('<strong>' + item.name + '</strong>').css('cursor','pointer').css('width', '50%')
                                 )
                                 .append(
-                                    $('<td>').addClass('stat today').html(formatNumber(item.today || 0))
+                                    $('<td>').addClass(item.today ? 'stat today' : 'warning').html(formatNumber(item.today || 0))
                                 )
                                 .append(
-                                    $('<td>').addClass('stat yesterday').html(formatNumber(item.yesterday || 0))
+                                    $('<td>').addClass(item.yesterday ? 'stat yesterday' : 'warning').html(formatNumber(item.yesterday || 0))
                                 )
                                 .append(
                                     $('<td>').addClass('stat total').html('<strong>' + formatNumber(item.total) + '</strong>')

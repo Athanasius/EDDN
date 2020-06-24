@@ -39,3 +39,8 @@ footer .navbar-default {
 tr.jsgrid-row > td, tr.jsgrid-alt-row > td {
 	padding: 8px;
 }
+
+/* Style the zero boxes as per bootstrap td.warning */
+tr.jsgrid-row > td.warning {
+	background-color:#faf2cc;
+}
